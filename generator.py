@@ -9,9 +9,30 @@ def main():
     """
 
     body = """
-    for row in cur:
-        if row['quant'] > 10:
-            _global.append(row)
+    inputType = input("Enter 'txt_file' to read from file or press Enter to input values manually: ")
+
+    if inputType == 'txt_file':
+        f = open('q1.txt', 'r')
+        S = f.readline().strip().split(',')
+        n = int(f.readline().strip())
+        V = f.readline().strip().split(',')
+        F = f.readline().strip().split(',')
+        sigma = f.readline().strip().split(',')
+        G = f.readline().strip()
+        f.close()
+
+    else:
+        print("Enter values for S, n, V, F, sigma, and G")
+        S = input("Enter S (comma-separated): ").strip().split(',')
+        n = int(input("Enter n (number of group-by attributes): "))
+        V = input("Enter V (comma-separated group-by attributes): ").strip().split(',')
+        F = input("Enter F (comma-separated aggregates like sum_x,avg_y): ").strip().split(',')
+        sigma = input("Enter sigma conditions (e.g. 1.state=NJ,2.city=NY): ").strip().split(',')
+        G = input("Enter having clause (or leave blank): ").strip()
+
+    #finished input parsing, need next steps
+    mf_struct = {}
+    
     """
 
     # Note: The f allows formatting with variables.
