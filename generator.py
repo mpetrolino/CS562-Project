@@ -20,7 +20,6 @@ def main():
         sigma = f.readline().strip().split(',')
         G = f.readline().strip()
         f.close()
-
     else:
         print("Enter values for S, n, V, F, sigma, and G")
         S = input("Enter S (comma-separated): ").strip().split(',')
@@ -32,6 +31,24 @@ def main():
 
     #finished input parsing, need next steps
     mf_struct = {}
+
+    for row in cur:
+        #creates key for each group-by column
+        #if key isn't in mf_struct, add it
+        key = str(row[V[0]])
+        for i in range(1, n):
+            key += "_" + str(row[V[i]])
+
+        if key not in mf_struct:
+            mf_struct[key] = {}
+
+            for sigma_val in sigma:
+                var, statement = sig.split('.')
+                col, value = cond.split('=')
+                for f_value in F:
+                    f_parts = f.split(' ')
+
+                    #implement aggregates
     
     """
 
