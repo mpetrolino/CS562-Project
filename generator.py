@@ -36,62 +36,159 @@ def main():
     print("sigma =", sigma)
     print("G =", G)
 
+    def make_group_key(row, V):
+        key_values = []
+        for attr in V:
+            key_values.append(row[attr])
+        return tuple(key_values)
+    
+    def parse_aggregate(aggregate_name):
+        #aggregate_name is broken down into grouping variable, aggregate function, and column name
+
+        aggregate_name = aggregate_name.strip()
+
+        first_underscore = aggregate_name.find('_')
+        second_underscore = aggregate_name.find('_', first_underscore + 1)
+
+        grouping_variable = aggregate_name[:first_underscore]
+        function_name = aggregate_name[first_underscore + 1:second_underscore]
+        column_name = aggregate_name[second_underscore + 1:]
+
+        grouping_var = int(grouping_variable)
+        return grouping_var, function_name, column_name
+
+    def parse_condition(condition):
+        left_side, separator, comparison_value = condition.strip().partition("=")
+        grouping_variable, separator, attribute_name = left_side.partition(".")
+
+        grouping_var = int(grouping_variable.strip())
+        attribute_name = attribute_name.strip()
+        comparison_value = comparison_value.strip().strip("'").strip("'")
+
+        return grouping_var, attribute_name, comparison_value
+
+    def matching_row(row, scan_number, sigma):
+        for condition in sigma:
+            condition_grouping_var, condition_attribute, condition_value = parse_condition(condition)
+
+            if condition_grouping_var == scan_number:
+                  if str(row[condition_attribute]) != condition_value:
+                      return False
+        
+        return True
+
+    def initialize_aggregate(function):
+        match function:
+            case 'sum':
+                return 0
+            case 'count':
+                return 0
+            case 'max':
+                return 0
+            case 'min':
+                return 0
+            case 'avg': 
+                return 0
+            case _:
+                return None
+    
+    def update_aggregate(mf_row, aggregate, row):
+        grouping_var, function, attribute = parse_aggregate(aggregate)
+        row_value = row[attribute]
+
+        
+        def update_sum():
+            mf_row[aggregate] += row_value
+
+        def update_count():
+            mf_row[aggregate] += 1
+
+        def update_max():
+            if mf_row[aggregate] is None:
+                mf_row[aggregate] = row_value
+            elif row_value > mf_row[aggregate]:
+                mf_row[aggregate] = row_value
+
+        def update_min():
+            if mf_row[aggregate] is None:
+                mf_row[aggregate] = row_value
+            elif row_value < mf_row[aggregate]:
+                mf_row[aggregate] = row_value
+
+        def update_avg():
+            sum = aggregate + '_sum'
+            count = aggregate + '_count'
+
+            mf_row[sum] += row_value
+            mf_row[count] += 1
+            mf_row[aggregate] += mf_row[sum] / mf_row[count]
+
+        update_functions = {
+            'sum': update_sum,
+            'count': update_count,
+            'max': update_max,
+            'min': update_min,
+            'avg': update_avg,
+        }
+        update_functions[function_name]()
+    
     mf_struct = {}
+
+    # Scan : 0
+    def create_mf_entry(group_key):
+        entry = {}
+
+        for index, attribute_name in enumerate(V):
+            entry[attribute_name] = group_key[index]
+        
+        for aggregate_name in F:
+            grouping_var, function_name, column_name = parse_aggregate(aggregate_name)
+
+            entry[aggregate_name] = initialize_aggregate(function_name)
+
+            if function_name == 'avg':
+                entry[aggregate_name + "_sum"] = 0
+                entry[aggregate_name + "_count"] = 0
+        
+        return entry
     
-    #Scan 0
     cur.execute("SELECT * FROM sales")
+
     for row in cur:
-        key = row['cust']
+        group_key = make_group_key(row, V)
 
-        if key not in mf_struct:
-            mf_struct[key] = {
-                'cust': row['cust'],
-                '1_sum_quant': 0,
-                '2_sum_quant': 0,
-                '3_sum_quant': 0
-            }
-
-    #Scan 1: grouping variable 1, state: NY
-    cur.execute("SELECT * FROM sales")
-    for row in cur:
-        key = row['cust']
-
-        if row['state'] == 'NY':
-            mf_struct[key]['1_sum_quant'] += row['quant']
-    
-
-    #Scan 2: grouping variable 2, state: NJ
-    cur.execute("SELECT * FROM sales")
-    for row in cur:
-        key = row['cust']
-
-        if row['state'] == 'NJ':
-            mf_struct[key]['2_sum_quant'] += row['quant']
+        if group_key not in mf_struct:
+            mf_struct[group_key] = create_mf_entry(group_key)
     
 
-    #Scan 3: grouping variable 3, state: CT
-    cur.execute("SELECT * FROM sales")
-    for row in cur:
-        key = row['cust']
+    # Scan - 1 through n
+    scan_number = 1
 
-        if row['state'] == 'CT':
-            mf_struct[key]['3_sum_quant'] += row['quant']
+    while scan_number <= n:
+        cur.execute("SELECT * FROM sales")
 
+        for sales_row in cur:
+            group_key = make_group_key(sales_row, V)
 
+            if group_key in mf_struct and matching_row(sales_row, scan_number, sigma):
+                for aggregate_name in F:
+                    aggregate_group, function_name, column_name = parse_aggregate(aggregate_name)
+
+                    if aggregate_group == scan_number:
+                        update_aggregate(mf_struct[group_key], aggregate_name, sales_row)
+
+        scan_number += 1
+
+    # Output
     for key, value in mf_struct.items():
-        _global.append({
-            'cust': value['cust'],
-            '1_sum_quant': value['1_sum_quant'],
-            '2_sum_quant': value['2_sum_quant'],
-            '3_sum_quant': value['3_sum_quant']
-        })
+        output_row = {}
 
+        for attribute in S:
+            output_row[attribute] = value.get(attribute)
 
+        _global.append(output_row)
 
-
-
-
-
+      
 
     """
 
