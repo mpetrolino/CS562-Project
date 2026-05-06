@@ -23,34 +23,79 @@ def main():
     else:
         print("Enter values for S, n, V, F, sigma, and G")
         S = input("Enter S (comma-separated): ").strip().split(',')
-        n = int(input("Enter n (number of group-by attributes): "))
+        n = int(input("Enter n (number of grouping variables): "))
         V = input("Enter V (comma-separated group-by attributes): ").strip().split(',')
         F = input("Enter F (comma-separated aggregates like sum_x,avg_y): ").strip().split(',')
         sigma = input("Enter sigma conditions (e.g. 1.state=NJ,2.city=NY): ").strip().split(',')
         G = input("Enter having clause (or leave blank): ").strip()
+    
+    print("S =", S)
+    print("n =", n)
+    print("V =", V)
+    print("F =", F)
+    print("sigma =", sigma)
+    print("G =", G)
 
-    #finished input parsing, need next steps
     mf_struct = {}
-
+    
+    #Scan 0
+    cur.execute("SELECT * FROM sales")
     for row in cur:
-        #creates key for each group-by column
-        #if key isn't in mf_struct, add it
-        key = str(row[V[0]])
-        for i in range(1, n):
-            key += "_" + str(row[V[i]])
+        key = row['cust']
 
         if key not in mf_struct:
-            mf_struct[key] = {}
+            mf_struct[key] = {
+                'cust': row['cust'],
+                '1_sum_quant': 0,
+                '2_sum_quant': 0,
+                '3_sum_quant': 0
+            }
 
-            for sigma_val in sigma:
-                var, statement = sig.split('.')
-                col, value = cond.split('=')
-                for f_value in F:
-                    f_parts = f.split(' ')
+    #Scan 1: grouping variable 1, state: NY
+    cur.execute("SELECT * FROM sales")
+    for row in cur:
+        key = row['cust']
 
-                    #implement aggregates
+        if row['state'] == 'NY':
+            mf_struct[key]['1_sum_quant'] += row['quant']
     
+
+    #Scan 2: grouping variable 2, state: NJ
+    cur.execute("SELECT * FROM sales")
+    for row in cur:
+        key = row['cust']
+
+        if row['state'] == 'NJ':
+            mf_struct[key]['2_sum_quant'] += row['quant']
+    
+
+    #Scan 3: grouping variable 3, state: CT
+    cur.execute("SELECT * FROM sales")
+    for row in cur:
+        key = row['cust']
+
+        if row['state'] == 'CT':
+            mf_struct[key]['3_sum_quant'] += row['quant']
+
+
+    for key, value in mf_struct.items():
+        _global.append({
+            'cust': value['cust'],
+            '1_sum_quant': value['1_sum_quant'],
+            '2_sum_quant': value['2_sum_quant'],
+            '3_sum_quant': value['3_sum_quant']
+        })
+
+
+
+
+
+
+
+
     """
+
+ 
 
     # Note: The f allows formatting with variables.
     #       Also, note the indentation is preserved.
@@ -91,7 +136,7 @@ if "__main__" == __name__:
     # Write the generated code to a file
     open("_generated.py", "w").write(tmp)
     # Execute the generated code
-    subprocess.run(["python", "_generated.py"])
+    subprocess.run(["python3", "_generated.py"])
 
 
 if "__main__" == __name__:
