@@ -9,6 +9,8 @@ def main():
     """
 
     body = """
+
+    #Generate query input from file or inputted from user
     inputType = input("Enter 'txt_file' to read from file or press Enter to input values manually: ")
 
     if inputType == 'txt_file':
@@ -36,6 +38,7 @@ def main():
     print("sigma =", sigma)
     print("G =", G)
 
+    #Create key for groups
     def make_group_key(row, V):
         key_values = []
         for attr in V:
@@ -67,6 +70,7 @@ def main():
 
         return grouping_var, attribute_name, comparison_value
 
+    #Check whether value for group satisfies the condition in sigma (and if yes will be added to the table)
     def matching_row(row, scan_number, sigma):
         for condition in sigma:
             condition_grouping_var, condition_attribute, condition_value = parse_condition(condition)
@@ -84,14 +88,15 @@ def main():
             case 'count':
                 return 0
             case 'max':
-                return 0
+                return None
             case 'min':
-                return 0
+                return None
             case 'avg': 
                 return 0
             case _:
                 return None
     
+    #Updates the aggregates being computed for the rows that will be added to the table
     def update_aggregate(mf_row, aggregate, row):
         grouping_var, function, attribute = parse_aggregate(aggregate)
         row_value = row[attribute]
@@ -121,7 +126,7 @@ def main():
 
             mf_row[sum] += row_value
             mf_row[count] += 1
-            mf_row[aggregate] += mf_row[sum] / mf_row[count]
+            mf_row[aggregate] = mf_row[sum] / mf_row[count]
 
         update_functions = {
             'sum': update_sum,
@@ -130,8 +135,9 @@ def main():
             'min': update_min,
             'avg': update_avg,
         }
-        update_functions[function_name]()
+        update_functions[function]()
     
+    #Var that will be storing the results
     mf_struct = {}
 
     # Scan : 0
@@ -154,6 +160,7 @@ def main():
     
     cur.execute("SELECT * FROM sales")
 
+    #Adds each key to table if not already in the table
     for row in cur:
         group_key = make_group_key(row, V)
 
@@ -164,6 +171,7 @@ def main():
     # Scan - 1 through n
     scan_number = 1
 
+    #Computes aggregates for g.v.s
     while scan_number <= n:
         cur.execute("SELECT * FROM sales")
 
@@ -179,14 +187,30 @@ def main():
 
         scan_number += 1
 
-    # Output
+    #Takes care of having clause (if there)
+    def evaluate_having(mf_row, G):
+        if G == "":
+            return True
+
+        expression = G
+
+        for key, value in mf_row.items():
+            expression = expression.replace(key, str(value))
+
+        return eval(expression)
+
+
+    # Output only rows that fufill having clause
     for key, value in mf_struct.items():
-        output_row = {}
 
-        for attribute in S:
-            output_row[attribute] = value.get(attribute)
+        if evaluate_having(value, G):
 
-        _global.append(output_row)
+            output_row = {}
+
+            for attribute in S:
+                output_row[attribute] = value.get(attribute)
+
+            _global.append(output_row)
 
       
 
