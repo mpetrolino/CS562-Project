@@ -41,6 +41,7 @@ def query():
         sigma = input("Enter sigma conditions (e.g. 1.state=NJ,2.city=NY): ").strip().split(',')
         G = input("Enter having clause (or leave blank): ").strip()
 
+    #Create key for groups
     def make_group_key(row, V):
         key_values = []
         for attr in V:
@@ -65,6 +66,7 @@ def query():
         comparison_value = comparison_value.strip().strip("'").strip("'")
         return grouping_var, attribute_name, comparison_value
 
+    #Check whether value for group satisfies the condition in sigma (and if yes will be added to the table)
     def matching_row(row, scan_number, sigma):
         for condition in sigma:
             condition_grouping_var, condition_attribute, condition_value = parse_condition(condition)
@@ -88,6 +90,7 @@ def query():
             case _:
                 return None
 
+    #Updates the aggregates being computed for the rows that will be added to the table
     def update_aggregate(mf_row, aggregate, row):
         grouping_var, function, attribute = parse_aggregate(aggregate)
         row_value = row[attribute]
@@ -120,6 +123,7 @@ def query():
         }
         update_functions[function]()
 
+    #Var that will be storing the results
     mf_struct = {}
 
     def create_mf_entry(group_key):
@@ -142,6 +146,7 @@ def query():
             mf_struct[group_key] = create_mf_entry(group_key)
 
     scan_number = 1
+    #Computes aggregates for g.v.s
     while scan_number <= n:
         cur.execute("SELECT * FROM sales")
         for sales_row in cur:
@@ -153,6 +158,7 @@ def query():
                         update_aggregate(mf_struct[group_key], aggregate_name, sales_row)
         scan_number += 1
 
+    #Takes care of having clause (if there)
     def evaluate_having(mf_row, G):
         if G == "":
             return True
