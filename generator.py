@@ -1,14 +1,19 @@
+#Mia Petrolino & Pratiksha Dadhania
+#CS 562 Final Project
+
 import subprocess
 import textwrap
 
-
 def main():
     body = """\
+    
+    #Creates generated program in _generated.py and runs code
+
     #Generate query input from file or inputted from user
     inputType = input("Enter 'txt_file' to read from file or press Enter to input values manually: ")
 
     if inputType == 'txt_file':
-        f = open('q1.txt', 'r')
+        f = open('q2.txt', 'r')
         S = f.readline().strip().split(',')
         n = int(f.readline().strip())
         V = f.readline().strip().split(',')
@@ -25,13 +30,14 @@ def main():
         sigma = input("Enter sigma conditions (e.g. 1.state=NJ,2.city=NY): ").strip().split(',')
         G = input("Enter having clause (or leave blank): ").strip()
 
-    #Create key for groups
+    #Create key for groups using the group by attributes (V)
     def make_group_key(row, V):
         key_values = []
         for attr in V:
             key_values.append(row[attr])
         return tuple(key_values)
 
+    #Returns g.v. number, aggregate funct, and attribute name from "1_avg_quant"
     def parse_aggregate(aggregate_name):
         aggregate_name = aggregate_name.strip()
         first_underscore = aggregate_name.find('_')
@@ -42,6 +48,7 @@ def main():
         grouping_var = int(grouping_variable)
         return grouping_var, function_name, column_name
 
+    #Returns g.v., attribute name, and comparison value from 1.state="NY"
     def parse_condition(condition):
         left_side, separator, comparison_value = condition.strip().partition("=")
         grouping_variable, separator, attribute_name = left_side.partition(".")
@@ -59,6 +66,7 @@ def main():
                     return False
         return True
 
+    #Initializes aggregate values before computing them
     def initialize_aggregate(function):
         match function:
             case 'sum':
@@ -93,6 +101,7 @@ def main():
             elif row_value < mf_row[aggregate]:
                 mf_row[aggregate] = row_value
         def update_avg():
+            #sum/count
             s = aggregate + '_sum'
             c = aggregate + '_count'
             mf_row[s] += row_value
@@ -107,13 +116,16 @@ def main():
         }
         update_functions[function]()
 
-    #Var that will be storing the results
+    #Var (dictionary) that will be storing the results
     mf_struct = {}
 
+    #Initializes MF structure entry for a new group
     def create_mf_entry(group_key):
         entry = {}
+        #Stores grouping attribute names
         for index, attribute_name in enumerate(V):
             entry[attribute_name] = group_key[index]
+        #Initializes aggregate values
         for aggregate_name in F:
             grouping_var, function_name, column_name = parse_aggregate(aggregate_name)
             entry[aggregate_name] = initialize_aggregate(function_name)
@@ -124,6 +136,7 @@ def main():
 
     cur.execute("SELECT * FROM sales")
 
+    #Create groups (first scan)
     for row in cur:
         group_key = make_group_key(row, V)
         if group_key not in mf_struct:
@@ -135,22 +148,27 @@ def main():
         cur.execute("SELECT * FROM sales")
         for sales_row in cur:
             group_key = make_group_key(sales_row, V)
+            #Check if row belongs to group and satisfies sigma
             if group_key in mf_struct and matching_row(sales_row, scan_number, sigma):
                 for aggregate_name in F:
                     aggregate_group, function_name, column_name = parse_aggregate(aggregate_name)
+                    #Only update aggregates for current scan
                     if aggregate_group == scan_number:
                         update_aggregate(mf_struct[group_key], aggregate_name, sales_row)
         scan_number += 1
 
     #Takes care of having clause (if there)
+    #If no having clause, returns True
     def evaluate_having(mf_row, G):
         if G == "":
             return True
         expression = G
+        #Replace aggregate names with actual values
         for key, value in mf_row.items():
             expression = expression.replace(key, str(value))
         return eval(expression)
 
+    #Constructs the output table
     for key, value in mf_struct.items():
         if evaluate_having(value, G):
             output_row = {}

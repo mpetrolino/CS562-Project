@@ -1,5 +1,5 @@
-cust,1_sum_quant,2_sum_quant
+year,1_sum_quant,2_sum_quant
 2
-cust
+year
 1_sum_quant,2_sum_quant
-1.state=NY,2.state=NJ
+1.prod=Apple,2.prod=Grapes
