@@ -27,13 +27,28 @@ def query():
     inputType = input("Enter 'txt_file' to read from file or press Enter to input values manually: ")
 
     if inputType == 'txt_file':
-        f = open('q2.txt', 'r')
+        filename = input("Enter input filename (must be in this folder): ").strip()
+
+        # optional: auto-add .txt if user forgets
+        if not filename.endswith(".txt"):
+            filename += ".txt"
+
+        filepath = os.path.join(os.getcwd(), filename)
+
+        # safety check
+        if not os.path.isfile(filepath):
+            print("Error: file not found in current folder.")
+            exit()
+
+        f = open(filepath, 'r')
+
         S = f.readline().strip().split(',')
         n = int(f.readline().strip())
         V = f.readline().strip().split(',')
         F = f.readline().strip().split(',')
         sigma = f.readline().strip().split(',')
         G = f.readline().strip()
+
         f.close()
     else:
         print("Enter values for S, n, V, F, sigma, and G")
