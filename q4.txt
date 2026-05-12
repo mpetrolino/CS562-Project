@@ -3,3 +3,4 @@ state,1_count_quant
 state
 1_count_quant
 1.year=2016
+1_count_quant > 970

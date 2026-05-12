@@ -29,13 +29,12 @@ def query():
     if inputType == 'txt_file':
         filename = input("Enter input filename (must be in this folder): ").strip()
 
-        # optional: auto-add .txt if user forgets
+        #Add .txt if user forgets
         if not filename.endswith(".txt"):
             filename += ".txt"
 
         filepath = os.path.join(os.getcwd(), filename)
 
-        # safety check
         if not os.path.isfile(filepath):
             print("Error: file not found in current folder.")
             exit()
